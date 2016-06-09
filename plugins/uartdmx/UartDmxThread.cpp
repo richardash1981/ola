@@ -127,7 +127,7 @@ void *UartDmxThread::Run() {
       err_write++;
       goto framesleep;
     }
-
+    frames++;
   framesleep:
     // Sleep for the remainder of the DMX frame time
     usleep(m_malft);
