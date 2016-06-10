@@ -120,13 +120,19 @@ bool UartWidget::Write(const ola::DmxBuffer& data) {
   unsigned char buffer[DMX_UNIVERSE_SIZE + 1];
   unsigned int length = DMX_UNIVERSE_SIZE;
   buffer[0] = DMX512_START_CODE;
+  ssize_t written;
 
   data.Get(buffer + 1, &length);
 
-  if (write(m_fd, buffer, length + 1) <= 0) {
+  written = write(m_fd, buffer, length + 1);
+  if (written <= 0) {
     // TODO(richardash1981): handle errors better as per the test code,
     // especially if we alter the scheduling!
-    OLA_WARN << Name() << " Short or failed write!";
+    OLA_WARN << Name() << " Zero-length or failed write!";
+    return false;
+  } else if (written < DMX_UNIVERSE_SIZE + 1) {
+    // wrote something, but not a whole universe
+    OLA_WARN << Name() << "Wrote " << written << " bytes";
     return false;
   } else {
     return true;
