@@ -72,7 +72,6 @@ bool UartDmxThread::WriteDMX(const DmxBuffer &buffer) {
  * The method called by the thread
  */
 void *UartDmxThread::Run() {
-  TimeStamp ts1, ts2;
   Clock clock;
   CheckTimeGranularity();
   DmxBuffer buffer;
