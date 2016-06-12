@@ -77,9 +77,24 @@ void *UartDmxThread::Run() {
   CheckTimeGranularity();
   DmxBuffer buffer;
 
+  /* members for performance / error tracking */
+  int err_breakstart, err_breakstop, err_write, frames;
+  TimeStamp lastprint, now;
+  // how often to print out, in microseconds
+  TimeInterval m_printinterval = TimeInterval(1e6);
+  TimeInterval since_lastprint;
+
+
   // Setup the widget
   if (!m_widget->IsOpen())
     m_widget->SetupOutput();
+
+  // zero counters
+  err_breakstart = 0;
+  err_breakstop = 0;
+  err_write = 0;
+  frames = 0;
+  clock.CurrentTime(&lastprint);
 
   while (1) {
     {
@@ -93,24 +108,50 @@ void *UartDmxThread::Run() {
       buffer.Set(m_buffer);
     }
 
-    if (!m_widget->SetBreak(true))
+    if (!m_widget->SetBreak(true)) {
+      err_breakstart++;
       goto framesleep;
+    }
 
     if (m_granularity == GOOD)
       usleep(m_breakt);
 
-    if (!m_widget->SetBreak(false))
+    if (!m_widget->SetBreak(false)) {
+      err_breakstop++;
       goto framesleep;
+    }
 
     if (m_granularity == GOOD)
       usleep(DMX_MAB);
 
-    if (!m_widget->Write(buffer))
+    if (!m_widget->Write(buffer)) {
+      err_write++;
       goto framesleep;
+    }
 
   framesleep:
     // Sleep for the remainder of the DMX frame time
     usleep(m_malft);
+
+
+  /* do houskeeping stuff (would be nice to put it somewhere non-critical */
+  clock.CurrentTime(&now);
+  since_lastprint = now - lastprint;
+  if (since_lastprint > m_printinterval) {
+    // need to do printout
+    lastprint = now;
+
+    OLA_INFO << "UART thread frames " << frames 
+       << ", errors: start break " << err_breakstart 
+       << ", stop break " << err_breakstop 
+       << ", write " << err_write;
+
+    /* clear all counters to go again */
+    err_breakstart = 0;
+    err_breakstop = 0;
+    err_write = 0;
+    frames = 0;
+  }
   }
   return NULL;
 }
